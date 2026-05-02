@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import javax.inject.Inject
 
 /** Stan UI dla ekranu Home. */
@@ -30,22 +31,37 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     private var currentCurrency: String = "usd"
+    private var lastFetchTime = 0L
+    private val MIN_FETCH_INTERVAL = 10_000L // 10 sekund
 
     init {
         viewModelScope.launch {
             settingsDataStore.selectedCurrency.collectLatest { currency ->
                 currentCurrency = currency
-                loadMarkets()
+                loadMarkets(force = true) // Wymuś przy zmianie waluty
             }
         }
     }
 
-    fun loadMarkets() {
+    fun loadMarkets(force: Boolean = false) {
+        val now = System.currentTimeMillis()
+        if (!force && now - lastFetchTime < MIN_FETCH_INTERVAL) return
+        lastFetchTime = now
+
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
             coinRepository.getMarkets(currentCurrency)
-                .onSuccess { _uiState.value = HomeUiState.Success(it, currentCurrency) }
-                .onFailure { _uiState.value = HomeUiState.Error(it.message ?: "Błąd sieci") }
+                .onSuccess { 
+                    _uiState.value = HomeUiState.Success(it, currentCurrency) 
+                }
+                .onFailure { error ->
+                    val message = if ((error as? HttpException)?.code() == 429) {
+                        "Zbyt wiele zapytań, poczekaj chwilę"
+                    } else {
+                        error.message ?: "Błąd sieci"
+                    }
+                    _uiState.value = HomeUiState.Error(message)
+                }
         }
     }
 }

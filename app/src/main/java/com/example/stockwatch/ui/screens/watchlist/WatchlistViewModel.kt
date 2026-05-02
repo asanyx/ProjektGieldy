@@ -36,21 +36,20 @@ class WatchlistViewModel @Inject constructor(
 
     val watchlistItems: StateFlow<List<WatchlistItemUi>> = combine(
         settingsDataStore.selectedCurrency,
+        repository.getAll(),
         _refreshTrigger
-    ) { currency, _ -> currency }.flatMapLatest { currency ->
-        combine(repository.getAll()) { (entities) ->
-            val marketsResult = coinRepository.getMarkets(currency)
-            val markets = marketsResult.getOrNull() ?: emptyList()
+    ) { currency, entities, _ ->
+        val marketsResult = coinRepository.getMarkets(currency)
+        val markets = marketsResult.getOrNull() ?: emptyList()
 
-            entities.map { entity ->
-                val coin = markets.find { it.id == entity.coinId }
-                WatchlistItemUi(
-                    entity = entity,
-                    currentPrice = coin?.currentPrice,
-                    priceChange24h = coin?.priceChange24h,
-                    currency = currency
-                )
-            }
+        entities.map { entity ->
+            val coin = markets.find { it.id == entity.coinId }
+            WatchlistItemUi(
+                entity = entity,
+                currentPrice = coin?.currentPrice,
+                priceChange24h = coin?.priceChange24h,
+                currency = currency
+            )
         }
     }.stateIn(
         scope = viewModelScope,
