@@ -1,0 +1,25 @@
+/build
+# Sekrety
+local.properties
+google-services.json
+*.jks
+*.keystore
+
+# Gradle build
+.gradle/
+build/
+app/build/
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Captures/profiling
+captures/
+*.hprof
+
+# Android generated
+/local.properties
+*.apk
+*.aab
