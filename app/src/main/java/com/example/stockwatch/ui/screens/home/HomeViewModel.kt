@@ -6,12 +6,9 @@ import com.example.stockwatch.data.local.datastore.SettingsDataStore
 import com.example.stockwatch.data.repository.CoinRepository
 import com.example.stockwatch.domain.model.Coin
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import retrofit2.HttpException
 import javax.inject.Inject
 
 /** Stan UI dla ekranu Home. */
@@ -21,16 +18,6 @@ sealed interface HomeUiState {
     data class Error(val message: String) : HomeUiState
 }
 
-/**
- * ViewModel dla ekranu głównego. Zarządza stanem listy kryptowalut
- * pobieranych z [CoinRepository]. Implementuje throttling zapytań
- * aby zapobiec przekroczeniu limitu API.
- */
-/**
- * ViewModel dla ekranu głównego. Zarządza stanem listy kryptowalut
- * pobieranych z [CoinRepository]. Implementuje throttling zapytań
- * aby zapobiec przekroczeniu limitu API.
- */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val coinRepository: CoinRepository,
@@ -40,38 +27,80 @@ class HomeViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    private var currentCurrency: String = "usd"
-    private var lastFetchTime = 0L
-    private val MIN_FETCH_INTERVAL = 10_000L // 10 sekund
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    val filteredCoins: StateFlow<List<Coin>> = combine(
+        _uiState, _searchQuery
+    ) { state, query ->
+        if (state is HomeUiState.Success) {
+            if (query.isBlank()) state.coins
+            else state.coins.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                it.symbol.contains(query, ignoreCase = true)
+            }
+        } else emptyList()
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
+        // Załaduj dane przy starcie i reaguj na zmiany waluty
         viewModelScope.launch {
             settingsDataStore.selectedCurrency.collectLatest { currency ->
-                currentCurrency = currency
-                loadMarkets(force = true) // Wymuś przy zmianie waluty
+                loadMarkets(currency)
+            }
+        }
+        
+        // Automatyczne odświeżanie co 2 minuty w tle
+        viewModelScope.launch {
+            while (true) {
+                delay(120_000L)
+                refreshInBackground()
             }
         }
     }
 
-    fun loadMarkets(force: Boolean = false) {
-        val now = System.currentTimeMillis()
-        if (!force && now - lastFetchTime < MIN_FETCH_INTERVAL) return
-        lastFetchTime = now
-
+    private fun loadMarkets(currency: String) {
         viewModelScope.launch {
             _uiState.value = HomeUiState.Loading
-            coinRepository.getMarkets(currentCurrency)
-                .onSuccess { 
-                    _uiState.value = HomeUiState.Success(it, currentCurrency) 
-                }
-                .onFailure { error ->
-                    val message = if ((error as? HttpException)?.code() == 429) {
-                        "Zbyt wiele zapytań, poczekaj chwilę"
-                    } else {
-                        error.message ?: "Błąd sieci"
+            coinRepository.getMarkets(currency)
+                .onSuccess { _uiState.value = HomeUiState.Success(it, currency) }
+                .onFailure { _uiState.value = HomeUiState.Error(it.message ?: "Błąd sieci") }
+        }
+    }
+
+    // Odświeżanie wymuszone przez użytkownika (przycisk)
+    fun forceRefresh() {
+        viewModelScope.launch {
+            val currency = settingsDataStore.selectedCurrency.first()
+            // Pokaż loading tylko jeśli nie ma danych
+            if (_uiState.value !is HomeUiState.Success) {
+                _uiState.value = HomeUiState.Loading
+            }
+            coinRepository.forceRefreshMarkets(currency)
+                .onSuccess { _uiState.value = HomeUiState.Success(it, currency) }
+                .onFailure {
+                    // Przy błędzie zostaw stare dane jeśli są
+                    if (_uiState.value !is HomeUiState.Success) {
+                        _uiState.value = HomeUiState.Error(it.message ?: "Błąd sieci")
                     }
-                    _uiState.value = HomeUiState.Error(message)
                 }
         }
+    }
+
+    // Odświeżanie w tle — nie pokazuje loading, nie przeszkadza użytkownikowi
+    private suspend fun refreshInBackground() {
+        val currency = settingsDataStore.selectedCurrency.first()
+        coinRepository.forceRefreshMarkets(currency)
+            .onSuccess { coins ->
+                // Aktualizuj tylko jeśli jesteśmy w stanie Success
+                if (_uiState.value is HomeUiState.Success) {
+                    _uiState.value = HomeUiState.Success(coins, currency)
+                }
+            }
+        // Błąd w tle ignoruj — nie pokazuj użytkownikowi
+    }
+
+    fun onSearchQueryChange(query: String) {
+        _searchQuery.value = query
     }
 }

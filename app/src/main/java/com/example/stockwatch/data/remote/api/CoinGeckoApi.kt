@@ -34,11 +34,12 @@ interface CoinGeckoApi {
         @Query("developer_data") developerData: Boolean = false
     ): CoinDetailDto
 
-    /** Dane historyczne do wykresu. */
+    /** Dane historyczne ceny dla wykresu — darmowy endpoint. */
     @GET("coins/{id}/market_chart")
-    suspend fun getCoinMarketChart(
+    suspend fun getMarketChart(
         @Path("id") id: String,
-        @Query("vs_currency") currency: String,
-        @Query("days") days: String
+        @Query("vs_currency") currency: String = "usd",
+        @Query("days") days: Int = 7,
+        @Query("interval") interval: String = "daily"
     ): MarketChartDto
 }

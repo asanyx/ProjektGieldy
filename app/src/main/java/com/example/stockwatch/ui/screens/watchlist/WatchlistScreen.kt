@@ -35,24 +35,13 @@ fun WatchlistScreen(
     val watchlist by viewModel.watchlistItems.collectAsState()
     var editingItem by remember { mutableStateOf<WatchlistEntity?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Obserwowane") },
-                actions = {
-                    IconButton(onClick = { viewModel.refresh() }) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Odśwież")
-                    }
-                }
-            )
-        }
-    ) { padding ->
+    Box(modifier = Modifier.fillMaxSize()) {
         if (watchlist.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text("Twoja lista jest pusta")
             }
         } else {
-            LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
                 items(watchlist) { item ->
                     WatchlistItemRow(
                         item = item,

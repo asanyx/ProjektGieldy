@@ -24,94 +24,88 @@ fun SettingsScreen(
     var showCurrencyDialog by remember { mutableStateOf(false) }
 
     val currencies = listOf("usd", "eur", "pln", "gbp")
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Ustawienia") })
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(text = "Opcje aplikacji", style = MaterialTheme.typography.titleMedium)
-            
-            ListItem(
-                headlineContent = { Text("Waluta") },
-                supportingContent = { Text(selectedCurrency.uppercase()) },
-                trailingContent = { 
-                    TextButton(onClick = { showCurrencyDialog = true }) {
-                        Text("Zmień")
-                    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(text = "Opcje aplikacji", style = MaterialTheme.typography.titleMedium)
+        
+        ListItem(
+            headlineContent = { Text("Waluta") },
+            supportingContent = { Text(selectedCurrency.uppercase()) },
+            trailingContent = { 
+                TextButton(onClick = { showCurrencyDialog = true }) {
+                    Text("Zmień")
                 }
-            )
-            
-            ListItem(
-                headlineContent = { Text("Tryb ciemny") },
-                supportingContent = { Text(if (isDarkMode) "Włączony" else "Wyłączony") },
-                trailingContent = { 
-                    Switch(
-                        checked = isDarkMode, 
-                        onCheckedChange = { viewModel.toggleDarkMode(it) }
-                    ) 
-                }
-            )
-            
-            HorizontalDivider()
+            }
+        )
+        
+        ListItem(
+            headlineContent = { Text("Tryb ciemny") },
+            supportingContent = { Text(if (isDarkMode) "Włączony" else "Wyłączony") },
+            trailingContent = { 
+                Switch(
+                    checked = isDarkMode, 
+                    onCheckedChange = { viewModel.toggleDarkMode(it) }
+                ) 
+            }
+        )
+        
+        HorizontalDivider()
 
-            if (showCurrencyDialog) {
-                AlertDialog(
-                    onDismissRequest = { showCurrencyDialog = false },
-                    title = { Text("Wybierz walutę") },
-                    text = {
-                        Column {
-                            currencies.forEach { currency ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            viewModel.setCurrency(currency)
-                                            showCurrencyDialog = false
-                                        }
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    RadioButton(
-                                        selected = currency == selectedCurrency,
-                                        onClick = {
-                                            viewModel.setCurrency(currency)
-                                            showCurrencyDialog = false
-                                        }
-                                    )
-                                    Text(text = currency.uppercase(), modifier = Modifier.padding(start = 8.dp))
-                                }
+        if (showCurrencyDialog) {
+            AlertDialog(
+                onDismissRequest = { showCurrencyDialog = false },
+                title = { Text("Wybierz walutę") },
+                text = {
+                    Column {
+                        currencies.forEach { currency ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        viewModel.setCurrency(currency)
+                                        showCurrencyDialog = false
+                                    }
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(
+                                    selected = currency == selectedCurrency,
+                                    onClick = {
+                                        viewModel.setCurrency(currency)
+                                        showCurrencyDialog = false
+                                    }
+                                )
+                                Text(text = currency.uppercase(), modifier = Modifier.padding(start = 8.dp))
                             }
                         }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showCurrencyDialog = false }) {
-                            Text("Anuluj")
-                        }
-                    }
-                )
-            }
-
-            Button(
-                onClick = {
-                    Firebase.auth.signOut()
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Wyloguj się")
-            }
-            
-            Text(text = "Wersja 1.0.0", style = MaterialTheme.typography.bodySmall)
+                confirmButton = {
+                    TextButton(onClick = { showCurrencyDialog = false }) {
+                        Text("Anuluj")
+                    }
+                }
+            )
         }
+
+        Button(
+            onClick = {
+                Firebase.auth.signOut()
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+        ) {
+            Text("Wyloguj się")
+        }
+        
+        Text(text = "Wersja 1.0.0", style = MaterialTheme.typography.bodySmall)
     }
 }
