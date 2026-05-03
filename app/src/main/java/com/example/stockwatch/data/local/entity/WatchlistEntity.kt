@@ -9,5 +9,6 @@ data class WatchlistEntity(
     val name: String,
     val symbol: String,
     val imageUrl: String,
-    val addedAt: Long = System.currentTimeMillis()
+    val addedAt: Long = System.currentTimeMillis(),
+    val notes: String = ""
 )

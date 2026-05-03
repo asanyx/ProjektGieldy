@@ -21,6 +21,16 @@ sealed interface HomeUiState {
     data class Error(val message: String) : HomeUiState
 }
 
+/**
+ * ViewModel dla ekranu głównego. Zarządza stanem listy kryptowalut
+ * pobieranych z [CoinRepository]. Implementuje throttling zapytań
+ * aby zapobiec przekroczeniu limitu API.
+ */
+/**
+ * ViewModel dla ekranu głównego. Zarządza stanem listy kryptowalut
+ * pobieranych z [CoinRepository]. Implementuje throttling zapytań
+ * aby zapobiec przekroczeniu limitu API.
+ */
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val coinRepository: CoinRepository,

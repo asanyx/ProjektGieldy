@@ -5,6 +5,11 @@ import com.example.stockwatch.domain.model.Coin
 import com.example.stockwatch.domain.model.toDomain
 import javax.inject.Inject
 
+/**
+ * Repozytorium odpowiedzialne za pobieranie danych rynkowych z CoinGecko API.
+ * Implementuje cache z czasem ważności [CACHE_DURATION] ms aby ograniczyć
+ * liczbę zapytań do API (limit ~30/min dla darmowego planu).
+ */
 class CoinRepository @Inject constructor(
     private val api: CoinGeckoApi
 ) {

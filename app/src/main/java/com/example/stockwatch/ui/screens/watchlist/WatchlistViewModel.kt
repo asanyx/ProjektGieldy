@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -27,7 +26,7 @@ data class WatchlistItemUi(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class WatchlistViewModel @Inject constructor(
-    private val repository: WatchlistRepository,
+    private val watchlistRepository: WatchlistRepository,
     private val coinRepository: CoinRepository,
     private val settingsDataStore: SettingsDataStore
 ) : ViewModel() {
@@ -36,7 +35,7 @@ class WatchlistViewModel @Inject constructor(
 
     val watchlistItems: StateFlow<List<WatchlistItemUi>> = combine(
         settingsDataStore.selectedCurrency,
-        repository.getAll(),
+        watchlistRepository.getAll(),
         _refreshTrigger
     ) { currency, entities, _ ->
         val marketsResult = coinRepository.getMarkets(currency)
@@ -63,7 +62,13 @@ class WatchlistViewModel @Inject constructor(
 
     fun removeFromWatchlist(entity: WatchlistEntity) {
         viewModelScope.launch {
-            repository.remove(entity)
+            watchlistRepository.remove(entity)
+        }
+    }
+
+    fun updateNotes(coinId: String, notes: String) {
+        viewModelScope.launch {
+            watchlistRepository.updateNotes(coinId, notes)
         }
     }
 }

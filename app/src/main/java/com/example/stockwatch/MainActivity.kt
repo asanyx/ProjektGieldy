@@ -5,7 +5,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material3.*
+import androidx.compose.runtime.rememberCoroutineScope
+import com.example.stockwatch.ui.navigation.AppDrawerContent
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
@@ -41,25 +46,54 @@ fun MainScreen() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
 
-    // List of screens where bottom bar should be visible
-    val showBottomBar = currentRoute in listOf(
+    // List of screens where bottom bar and drawer should be visible
+    val isMainScreen = currentRoute in listOf(
         Screen.Home.route,
         Screen.Watchlist.route,
         Screen.Settings.route,
         Screen.Contact.route
     )
 
-    Scaffold(
-        bottomBar = {
-            if (showBottomBar) {
-                BottomNavBar(navController = navController)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = isMainScreen,
+        drawerContent = {
+            ModalDrawerSheet {
+                AppDrawerContent(
+                    navController = navController,
+                    drawerState = drawerState,
+                    scope = scope
+                )
             }
         }
-    ) { innerPadding ->
-        AppNavHost(
-            navController = navController,
-            modifier = Modifier.padding(innerPadding)
-        )
+    ) {
+        Scaffold(
+            topBar = {
+                if (isMainScreen) {
+                    @OptIn(ExperimentalMaterial3Api::class)
+                    TopAppBar(
+                        title = { Text("StockWatch") },
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        }
+                    )
+                }
+            },
+            bottomBar = {
+                if (isMainScreen) {
+                    BottomNavBar(navController = navController)
+                }
+            }
+        ) { innerPadding ->
+            AppNavHost(
+                navController = navController,
+                modifier = Modifier.padding(innerPadding)
+            )
+        }
     }
 }
