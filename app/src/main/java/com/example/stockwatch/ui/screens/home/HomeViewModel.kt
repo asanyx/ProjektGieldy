@@ -64,7 +64,9 @@ class HomeViewModel @Inject constructor(
             _uiState.value = HomeUiState.Loading
             coinRepository.getMarkets(currency)
                 .onSuccess { _uiState.value = HomeUiState.Success(it, currency) }
-                .onFailure { _uiState.value = HomeUiState.Error(it.message ?: "Błąd sieci") }
+                .onFailure { error ->
+                    _uiState.value = HomeUiState.Error(mapErrorToMessage(error))
+                }
         }
     }
 
@@ -73,17 +75,27 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             val currency = settingsDataStore.selectedCurrency.first()
             // Pokaż loading tylko jeśli nie ma danych
-            if (_uiState.value !is HomeUiState.Success) {
+            val currentState = _uiState.value
+            if (currentState !is HomeUiState.Success) {
                 _uiState.value = HomeUiState.Loading
             }
             coinRepository.forceRefreshMarkets(currency)
                 .onSuccess { _uiState.value = HomeUiState.Success(it, currency) }
-                .onFailure {
+                .onFailure { error ->
                     // Przy błędzie zostaw stare dane jeśli są
                     if (_uiState.value !is HomeUiState.Success) {
-                        _uiState.value = HomeUiState.Error(it.message ?: "Błąd sieci")
+                        _uiState.value = HomeUiState.Error(mapErrorToMessage(error))
                     }
                 }
+        }
+    }
+
+    private fun mapErrorToMessage(error: Throwable): String {
+        return when (error) {
+            is java.net.UnknownHostException -> "Brak połączenia z internetem. Sprawdź swoje połączenie."
+            is java.net.SocketTimeoutException -> "Przekroczono czas oczekiwania na połączenie. Spróbuj ponownie."
+            is java.net.ConnectException -> "Nie można połączyć się z serwerem."
+            else -> error.message ?: "Wystąpił nieoczekiwany błąd."
         }
     }
 

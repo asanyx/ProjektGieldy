@@ -83,15 +83,51 @@ fun HomeScreen(
                         }
                     }
                 }
-                is HomeUiState.Error -> Text(
-                    text = state.message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
+                is HomeUiState.Error -> {
+                    ErrorView(
+                        message = state.message,
+                        onRetry = { viewModel.forceRefresh() },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+fun ErrorView(
+    message: String,
+    onRetry: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Refresh,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.secondary
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = if (message.contains("Unable to resolve host") || message.contains("network") || message.contains("ConnectException"))
+                "Brak połączenia z internetem. Sprawdź swoje połączenie i spróbuj ponownie."
+            else message,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge
+        )
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(
+            onClick = onRetry,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Icon(Icons.Default.Refresh, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Ponów próbę")
         }
     }
 }

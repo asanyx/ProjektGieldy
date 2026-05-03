@@ -106,6 +106,6 @@ fun SettingsScreen(
             Text("Wyloguj się")
         }
         
-        Text(text = "Wersja 1.0.0", style = MaterialTheme.typography.bodySmall)
+        Text(text = "Wersja 1.0.2", style = MaterialTheme.typography.bodySmall)
     }
 }
