@@ -28,8 +28,18 @@ import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import com.example.stockwatch.util.CurrencyUtils
 
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,8 +92,11 @@ fun CoinDetailScreen(
                 }
                 is CoinDetailUiState.Error -> Text(
                     text = state.message,
-                    modifier = Modifier.align(Alignment.Center),
-                    color = MaterialTheme.colorScheme.error
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(16.dp),
+                    color = MaterialTheme.colorScheme.error,
+                    textAlign = TextAlign.Center
                 )
             }
         }
@@ -173,9 +186,14 @@ fun ChartSection(chartData: List<Pair<Long, Double>>) {
         val maxPrice = prices.max()
         val priceRange = (maxPrice - minPrice).coerceAtLeast(0.01f)
 
+        var selectedIndex by remember { mutableStateOf<Int?>(null) }
+
         // Kolor linii zależny od trendu
         val lineColor = if (prices.last() >= prices.first())
             Color(0xFF4CAF50) else Color(0xFFEF5350)
+
+        val primaryColor = MaterialTheme.colorScheme.primary
+        val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
         val yLabelCount = 4 // liczba etykiet na osi Y
         val yStep = priceRange / (yLabelCount - 1)
@@ -191,84 +209,156 @@ fun ChartSection(chartData: List<Pair<Long, Double>>) {
         // Etykiety osi X
         val firstDate = java.text.SimpleDateFormat("dd.MM", java.util.Locale.getDefault())
             .format(java.util.Date(timestamps.first()))
-        val lastDate = java.text.SimpleDateFormat("dd.MM", java.util.Locale.getDefault())
-            .format(java.util.Date(timestamps.last()))
 
-        Text(
-            text = "Cena — ostatnie 7 dni",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .width(64.dp)
-                    .height(160.dp),
-                verticalArrangement = Arrangement.SpaceBetween
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                yLabels.reversed().forEach { label ->
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 9.sp,
-                        maxLines = 1
-                    )
-                }
-            }
-
-            Canvas(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(160.dp)
-            ) {
-                val chartWidth = size.width
-                val chartHeight = size.height
-                val stepX = chartWidth / (prices.size - 1).coerceAtLeast(1)
-
-                val gridColor = Color.Gray.copy(alpha = 0.2f)
-                for (i in 0 until yLabelCount) {
-                    val y = chartHeight - (i.toFloat() / (yLabelCount - 1)) * chartHeight
-                    drawLine(
-                        color = gridColor,
-                        start = androidx.compose.ui.geometry.Offset(0f, y),
-                        end = androidx.compose.ui.geometry.Offset(chartWidth, y),
-                        strokeWidth = 1.dp.toPx()
-                    )
-                }
-
-                val path = Path()
-                prices.forEachIndexed { index, price ->
-                    val x = index * stepX
-                    val y = chartHeight - ((price - minPrice) / priceRange) * chartHeight
-                    if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
-                }
-
-                drawPath(
-                    path = path,
-                    color = lineColor,
-                    style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                Text(
+                    text = "Cena — ostatnie 7 dni",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = onSurfaceVariant
                 )
-
-                val lastX = (prices.size - 1) * stepX
-                val lastY = chartHeight - ((prices.last() - minPrice) / priceRange) * chartHeight
-                drawCircle(color = lineColor, radius = 5.dp.toPx(),
-                    center = androidx.compose.ui.geometry.Offset(lastX, lastY))
+                
+                if (selectedIndex != null && selectedIndex!! < prices.size) {
+                    val time = java.text.SimpleDateFormat("dd.MM HH:mm", java.util.Locale.getDefault())
+                        .format(java.util.Date(timestamps[selectedIndex!!]))
+                    val price = prices[selectedIndex!!]
+                    Text(
+                        text = "$time: $${String.format("%.2f", price)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = primaryColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
-        }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 64.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(firstDate, style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
-            Text("dziś", style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
-            Text(lastDate, style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier
+                        .width(64.dp)
+                        .height(160.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    yLabels.reversed().forEach { label ->
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = onSurfaceVariant,
+                            fontSize = 9.sp,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                Canvas(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(160.dp)
+                        .pointerInput(prices) {
+                            detectTapGestures(
+                                onPress = { offset ->
+                                    val stepX = size.width / (prices.size - 1).coerceAtLeast(1)
+                                    selectedIndex = (offset.x / stepX).roundToInt().coerceIn(0, prices.size - 1)
+                                    try {
+                                        awaitRelease()
+                                    } finally {
+                                        selectedIndex = null
+                                    }
+                                }
+                            )
+                        }
+                        .pointerInput(prices) {
+                            detectDragGestures(
+                                onDragStart = { offset ->
+                                    val stepX = size.width / (prices.size - 1).coerceAtLeast(1)
+                                    selectedIndex = (offset.x / stepX).roundToInt().coerceIn(0, prices.size - 1)
+                                },
+                                onDrag = { change, _ ->
+                                    val stepX = size.width / (prices.size - 1).coerceAtLeast(1)
+                                    selectedIndex = (change.position.x / stepX).roundToInt().coerceIn(0, prices.size - 1)
+                                },
+                                onDragEnd = { selectedIndex = null },
+                                onDragCancel = { selectedIndex = null }
+                            )
+                        }
+                ) {
+                    val chartWidth = size.width
+                    val chartHeight = size.height
+                    val stepX = chartWidth / (prices.size - 1).coerceAtLeast(1)
+
+                    val gridColor = Color.Gray.copy(alpha = 0.2f)
+                    for (i in 0 until yLabelCount) {
+                        val y = chartHeight - (i.toFloat() / (yLabelCount - 1)) * chartHeight
+                        drawLine(
+                            color = gridColor,
+                            start = Offset(0f, y),
+                            end = Offset(chartWidth, y),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+
+                    val path = Path()
+                    prices.forEachIndexed { index, price ->
+                        val x = index * stepX
+                        val y = chartHeight - ((price - minPrice) / priceRange) * chartHeight
+                        if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+
+                    drawPath(
+                        path = path,
+                        color = lineColor,
+                        style = Stroke(width = 2.5.dp.toPx(), cap = StrokeCap.Round)
+                    )
+
+                    // Rysowanie zaznaczonego punktu
+                    selectedIndex?.let { index ->
+                        val x = index * stepX
+                        val y = chartHeight - ((prices[index] - minPrice) / priceRange) * chartHeight
+                        
+                        // Linia pionowa
+                        drawLine(
+                            color = primaryColor.copy(alpha = 0.5f),
+                            start = Offset(x, 0f),
+                            end = Offset(x, chartHeight),
+                            strokeWidth = 1.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                        )
+                        
+                        // Kółko na linii
+                        drawCircle(
+                            color = primaryColor,
+                            radius = 6.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.dp.toPx(),
+                            center = Offset(x, y)
+                        )
+                    } ?: run {
+                        // Domyślny kółko na końcu, gdy nic nie jest zaznaczone
+                        val lastX = (prices.size - 1) * stepX
+                        val lastY = chartHeight - ((prices.last() - minPrice) / priceRange) * chartHeight
+                        drawCircle(color = lineColor, radius = 5.dp.toPx(),
+                            center = Offset(lastX, lastY))
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 64.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(firstDate, style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+                Text("Dziś", style = MaterialTheme.typography.labelSmall, fontSize = 9.sp)
+            }
         }
     } else {
         Box(
@@ -276,7 +366,7 @@ fun ChartSection(chartData: List<Pair<Long, Double>>) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Wykres niedostępny — odśwież za chwilę",
+                text = "Ładowanie danych wykresu...",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
